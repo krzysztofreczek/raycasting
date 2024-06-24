@@ -14,36 +14,72 @@ mod calculations;
 const SCREEN_WIDTH: i32 = 1280;
 const SCREEN_HEIGHT: i32 = 720;
 
-const VIEW_WIDTH: f64 = 1000.0;
-const VIEW_HEIGHT: f64 = 1000.0;
+const FIELD_VIEW_LENGTH: f64 = 300.0;
+const FIELD_VIEW_ANGLE: f64 = 40.0;
+
 struct Point2D {
     x: f64,
     y: f64,
 }
 
-const MAP_POINTS: [Point2D; 7] = [
-    Point2D {
-        x: -100.0,
-        y: -100.0,
-    },
-    Point2D { x: -70.0, y: 100.0 },
-    Point2D { x: 10.0, y: 60.0 },
-    Point2D { x: 20.0, y: 60.0 },
-    Point2D { x: 100.0, y: 100.0 },
-    Point2D {
-        x: 120.0,
-        y: -100.0,
-    },
-    Point2D { x: 70.0, y: -120.0 },
+const MAP_WALLS: [(Point2D, Point2D); 9] = [
+    (
+        Point2D {
+            x: -100.0,
+            y: -100.0,
+        },
+        Point2D {
+            x: -100.0,
+            y: 100.0,
+        },
+    ),
+    (
+        Point2D {
+            x: -100.0,
+            y: 100.0,
+        },
+        Point2D { x: -50.0, y: 100.0 },
+    ),
+    (
+        Point2D { x: -50.0, y: 100.0 },
+        Point2D { x: -50.0, y: 50.0 },
+    ),
+    (Point2D { x: -50.0, y: 50.0 }, Point2D { x: 0.0, y: 50.0 }),
+    (Point2D { x: 0.0, y: 50.0 }, Point2D { x: 0.0, y: 100.0 }),
+    (Point2D { x: 0.0, y: 100.0 }, Point2D { x: 100.0, y: 100.0 }),
+    (
+        Point2D { x: 100.0, y: 100.0 },
+        Point2D { x: 150.0, y: 50.0 },
+    ),
+    (
+        Point2D { x: 150.0, y: 50.0 },
+        Point2D {
+            x: 150.0,
+            y: -100.0,
+        },
+    ),
+    (
+        Point2D {
+            x: 150.0,
+            y: -100.0,
+        },
+        Point2D {
+            x: -100.0,
+            y: -100.0,
+        },
+    ),
 ];
 
 const INITIAL_CAM_POS: Point2D = Point2D { x: 0.0, y: 0.0 };
+const INITIAL_CAM_ANGLE: f64 = 90.0;
 const CAM_SPEED: f64 = 5.0;
+const CAM_ROATION_SPEED: f64 = 5.0;
 
 const POINT_WIDTH: u32 = 1;
 
 pub fn main() -> Result<(), String> {
     let mut cam_pos = INITIAL_CAM_POS;
+    let mut cam_angle = INITIAL_CAM_ANGLE;
 
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -94,112 +130,32 @@ pub fn main() -> Result<(), String> {
                 } => {
                     cam_pos.x -= CAM_SPEED;
                 }
+                Event::KeyDown {
+                    keycode: Some(Keycode::A),
+                    ..
+                } => {
+                    cam_angle += CAM_ROATION_SPEED;
+                }
+                Event::KeyDown {
+                    keycode: Some(Keycode::D),
+                    ..
+                } => {
+                    cam_angle -= CAM_ROATION_SPEED;
+                }
                 _ => {}
             }
         }
 
-        let cam_pos_points = cam_pos_view_points(&cam_pos);
-
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
 
-        let mut previous_visible_point: Option<Point2D> = None;
+        print_2d_camera(&mut canvas, &cam_pos, &cam_angle);
 
-        for i in 0..MAP_POINTS.len() {
-            let j0 = i % MAP_POINTS.len();
-            let j1 = (i + 1) % MAP_POINTS.len();
-            print_2d_line(&mut canvas, &MAP_POINTS[j0], &MAP_POINTS[j1]);
+        scan(&mut canvas, &cam_pos, &cam_angle);
 
-            let mut next_visible_point: Option<Point2D> = None;
-
-            let ir = calculations::do_segments_intersect(
-                (MAP_POINTS[j0].x, MAP_POINTS[j0].y),
-                (MAP_POINTS[j1].x, MAP_POINTS[j1].y),
-                (cam_pos.x, cam_pos.y),
-                (cam_pos_points.0.x, cam_pos_points.0.y),
-            );
-            if ir.0 {
-                print_2d_point(
-                    &mut canvas,
-                    &Point2D {
-                        x: ir.1.unwrap().0,
-                        y: ir.1.unwrap().1,
-                    },
-                );
-                print_3d_point(
-                    &mut canvas,
-                    &cam_pos,
-                    &Point2D {
-                        x: ir.1.unwrap().0,
-                        y: ir.1.unwrap().1,
-                    },
-                );
-                next_visible_point = Some(Point2D {
-                    x: ir.1.unwrap().0,
-                    y: ir.1.unwrap().1,
-                });
-            }
-
-            let ir = calculations::do_segments_intersect(
-                (MAP_POINTS[j0].x, MAP_POINTS[j0].y),
-                (MAP_POINTS[j1].x, MAP_POINTS[j1].y),
-                (cam_pos.x, cam_pos.y),
-                (cam_pos_points.1.x, cam_pos_points.1.y),
-            );
-            if ir.0 {
-                print_2d_point(
-                    &mut canvas,
-                    &Point2D {
-                        x: ir.1.unwrap().0,
-                        y: ir.1.unwrap().1,
-                    },
-                );
-                print_3d_point(
-                    &mut canvas,
-                    &cam_pos,
-                    &Point2D {
-                        x: ir.1.unwrap().0,
-                        y: ir.1.unwrap().1,
-                    },
-                );
-                next_visible_point = Some(Point2D {
-                    x: ir.1.unwrap().0,
-                    y: ir.1.unwrap().1,
-                });
-            }
-
-            let point_visible = calculations::is_point_within_triange(
-                (MAP_POINTS[j0].x, MAP_POINTS[j0].y),
-                (cam_pos.x, cam_pos.y),
-                (cam_pos_points.0.x, cam_pos_points.0.y),
-                (cam_pos_points.1.x, cam_pos_points.1.y),
-            );
-            if point_visible {
-                print_2d_point(&mut canvas, &MAP_POINTS[j0]);
-                print_3d_point(&mut canvas, &cam_pos, &MAP_POINTS[j0]);
-                next_visible_point = Some(Point2D {
-                    x: MAP_POINTS[j0].x,
-                    y: MAP_POINTS[j0].y,
-                });
-            }
-
-            if next_visible_point.is_some() {
-                let np = next_visible_point.unwrap();
-                if previous_visible_point.is_some() {
-                    print_3d_line(
-                        &mut canvas,
-                        &cam_pos,
-                        &previous_visible_point.unwrap(),
-                        &np,
-                    );
-                }   
-                previous_visible_point = Some(np);             
-            } else {
-                previous_visible_point = None;
-            }
+        for w in MAP_WALLS {
+            print_2d_line(&mut canvas, &w.0, &w.1);
         }
-
-        print_2d_camera(&mut canvas, &cam_pos);
 
         canvas.present();
 
@@ -209,15 +165,55 @@ pub fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn print_2d_point(canvas: &mut Canvas<Window>, p: &Point2D) {
-    canvas.set_draw_color(Color::RGB(0, 255, 0));
+const MIN_DISTANCE_HEIGHT: i32 = 300;
 
-    let x = SCREEN_WIDTH / 2 + p.x as i32;
-    let y = SCREEN_HEIGHT / 2 - p.y as i32;
+fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
+    let mut i = 0.0;
+    for a in -FIELD_VIEW_ANGLE as i32..FIELD_VIEW_ANGLE as i32+1 {
+        let angle = *cam_angle + a as f64;
+        print!("angle: {}\n", angle);
+        print!("cam_pos: ({}, {})\n", cam_pos.x, cam_pos.y);
+        
+        let mut min_distance = FIELD_VIEW_LENGTH;
+        for w in MAP_WALLS {
+            let intersection = calculations::intersection_point_with_segment(
+                w.0.x,
+                w.0.y,
+                w.1.x,
+                w.1.y,
+                cam_pos.x,
+                cam_pos.y,
+                angle,
+            );
 
-    canvas
-        .draw_rect(Rect::new(x, y, POINT_WIDTH, POINT_WIDTH))
-        .unwrap();
+            match intersection {
+                Some((xi, yi)) => {
+                    let distance = calculations::distance_between_points(cam_pos.x, cam_pos.y, xi, yi);
+                    if distance < min_distance {
+                        min_distance = distance;
+                    };
+                },
+                None => {},
+            }
+        }
+
+        print!("min_distance: {}\n", min_distance);
+
+        let color_mul = 255 - (min_distance / FIELD_VIEW_LENGTH * 255.0) as u8;
+        canvas.set_draw_color(Color::RGB(0, 0, 255 & color_mul));
+
+        let x = SCREEN_WIDTH as f64 - (i / (2.0 * (FIELD_VIEW_ANGLE) + 1.0)) * SCREEN_WIDTH as f64;
+        let y = ((FIELD_VIEW_LENGTH - min_distance) / FIELD_VIEW_LENGTH) * MIN_DISTANCE_HEIGHT as f64;
+
+        canvas
+            .draw_line(
+                Point::new(x as i32, SCREEN_HEIGHT / 2 - y as i32),
+                Point::new(x as i32, SCREEN_HEIGHT / 2 + y as i32),
+            )
+            .unwrap();
+
+        i += 1.0;
+    }
 }
 
 fn print_2d_line(canvas: &mut Canvas<Window>, p1: &Point2D, p2: &Point2D) {
@@ -233,34 +229,7 @@ fn print_2d_line(canvas: &mut Canvas<Window>, p1: &Point2D, p2: &Point2D) {
         .unwrap();
 }
 
-fn print_3d_point(canvas: &mut Canvas<Window>, cam_pos: &Point2D, p: &Point2D) {
-    let (px, py) = point_3d(&cam_pos, &p);
-
-    canvas.set_draw_color(Color::RGB(255, 255, 0));
-    canvas
-        .draw_rect(Rect::new(
-            px as i32,
-            SCREEN_HEIGHT - py as i32,
-            POINT_WIDTH,
-            POINT_WIDTH,
-        ))
-        .unwrap();
-}
-
-fn print_3d_line(canvas: &mut Canvas<Window>, cam_pos: &Point2D, p1: &Point2D, p2: &Point2D) {
-    let (x1, y1) = point_3d(&cam_pos, &p1);
-    let (x2, y2) = point_3d(&cam_pos, &p2);
-
-    canvas.set_draw_color(Color::RGB(255, 255, 0));
-    canvas
-        .draw_line(
-            Point::new(x1 as i32, SCREEN_HEIGHT - y1 as i32),
-            Point::new(x2 as i32, SCREEN_HEIGHT - y2 as i32),
-        )
-        .unwrap();
-}
-
-fn print_2d_camera(canvas: &mut Canvas<Window>, cam_pos: &Point2D) {
+fn print_2d_camera(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
     canvas.set_draw_color(Color::RGB(255, 0, 0));
     canvas
         .draw_rect(Rect::new(
@@ -271,7 +240,7 @@ fn print_2d_camera(canvas: &mut Canvas<Window>, cam_pos: &Point2D) {
         ))
         .unwrap();
 
-    let cam_pos_points = cam_pos_view_points(&cam_pos);
+    let cam_pos_points = cam_pos_view_points(&cam_pos, &cam_angle);
 
     canvas
         .draw_line(
@@ -313,34 +282,20 @@ fn print_2d_camera(canvas: &mut Canvas<Window>, cam_pos: &Point2D) {
         .unwrap();
 }
 
-fn cam_pos_view_points(cam_pos: &Point2D) -> (Point2D, Point2D) {
-    let x1 = cam_pos.x - VIEW_WIDTH / 2.0;
-    let y1 = cam_pos.y + VIEW_HEIGHT;
-    let x2 = cam_pos.x + VIEW_WIDTH / 2.0;
-    let y2 = cam_pos.y + VIEW_HEIGHT;
+fn cam_pos_view_points(cam_pos: &Point2D, cam_angle: &f64) -> (Point2D, Point2D) {
+    let (x1, y1) = calculations::calculate_other_endpoint(
+        cam_pos.x,
+        cam_pos.y,
+        FIELD_VIEW_LENGTH,
+        cam_angle + FIELD_VIEW_ANGLE,
+    );
+
+    let (x2, y2) = calculations::calculate_other_endpoint(
+        cam_pos.x,
+        cam_pos.y,
+        FIELD_VIEW_LENGTH,
+        cam_angle - FIELD_VIEW_ANGLE,
+    );
 
     return (Point2D { x: x1, y: y1 }, Point2D { x: x2, y: y2 });
-}
-
-fn point_3d(cam_pos: &Point2D, p: &Point2D) -> (f64, f64) {
-    let cam_pos_points = cam_pos_view_points(&cam_pos);
-
-    let left_distances = calculations::point_to_segment_distances(
-        (p.x, p.y),
-        (cam_pos.x, cam_pos.y),
-        (cam_pos_points.0.x, cam_pos_points.0.y),
-    );
-
-    let right_distances = calculations::point_to_segment_distances(
-        (p.x, p.y),
-        (cam_pos.x, cam_pos.y),
-        (cam_pos_points.1.x, cam_pos_points.1.y),
-    );
-
-    let cam_distance = calculations::point_to_point_distance((cam_pos.x, cam_pos.y), (p.x, p.y));
-
-    let px = left_distances.0 / (left_distances.0 + right_distances.0) * SCREEN_WIDTH as f64;
-    let py = (cam_distance.1 / VIEW_HEIGHT) * (SCREEN_HEIGHT / 2) as f64;
-
-    return (px, py);
 }
