@@ -71,11 +71,12 @@ const MAP_WALLS: [(Point2D, Point2D); 9] = [
 ];
 
 const INITIAL_CAM_POS: Point2D = Point2D { x: 0.0, y: 0.0 };
-const INITIAL_CAM_ANGLE: f64 = 90.0;
-const CAM_SPEED: f64 = 5.0;
-const CAM_ROATION_SPEED: f64 = 5.0;
+const INITIAL_CAM_ANGLE: f64 = 0.0;
 
-const POINT_WIDTH: u32 = 1;
+const CAM_SPEED: f64 = 5.0;
+const CAM_ROTATION_SPEED: f64 = 5.0;
+
+const SCANNING_STEP_ANGLE: f64 = 0.5;
 
 pub fn main() -> Result<(), String> {
     let mut cam_pos = INITIAL_CAM_POS;
@@ -86,7 +87,7 @@ pub fn main() -> Result<(), String> {
 
     let window = video_subsystem
         .window(
-            "raycasting: Video",
+            "ray-casting: Video",
             SCREEN_WIDTH.try_into().unwrap(),
             SCREEN_HEIGHT.try_into().unwrap(),
         )
@@ -134,13 +135,13 @@ pub fn main() -> Result<(), String> {
                     keycode: Some(Keycode::A),
                     ..
                 } => {
-                    cam_angle += CAM_ROATION_SPEED;
+                    cam_angle += CAM_ROTATION_SPEED;
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::D),
                     ..
                 } => {
-                    cam_angle -= CAM_ROATION_SPEED;
+                    cam_angle -= CAM_ROTATION_SPEED;
                 }
                 _ => {}
             }
@@ -168,41 +169,58 @@ pub fn main() -> Result<(), String> {
 const MIN_DISTANCE_HEIGHT: i32 = 300;
 
 fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
-    let mut i = 0.0;
-    for a in -FIELD_VIEW_ANGLE as i32..FIELD_VIEW_ANGLE as i32+1 {
-        let angle = *cam_angle + a as f64;
-        print!("angle: {}\n", angle);
-        print!("cam_pos: ({}, {})\n", cam_pos.x, cam_pos.y);
-        
+    let mut angle = -FIELD_VIEW_ANGLE;
+    let mut previous_min_distance = FIELD_VIEW_LENGTH;
+
+    while angle < FIELD_VIEW_ANGLE {
+        let ray_angle = cam_angle + angle;
+        let ray_endpoint = calculations::calculate_other_endpoint(
+            cam_pos.x,
+            cam_pos.y,
+            FIELD_VIEW_LENGTH,
+            ray_angle,
+        );
+
         let mut min_distance = FIELD_VIEW_LENGTH;
         for w in MAP_WALLS {
-            let intersection = calculations::intersection_point_with_segment(
-                w.0.x,
-                w.0.y,
-                w.1.x,
-                w.1.y,
-                cam_pos.x,
-                cam_pos.y,
-                angle,
+            let intersection = calculations::find_intersection(
+                ((w.0.x, w.0.y,), (w.1.x, w.1.y,)),
+                ((cam_pos.x, cam_pos.y,), (ray_endpoint.0, ray_endpoint.1,)),
             );
 
             match intersection {
-                Some((xi, yi)) => {
-                    let distance = calculations::distance_between_points(cam_pos.x, cam_pos.y, xi, yi);
+                Some((ix, iy)) => {
+                    let distance = calculations::distance_between_points(cam_pos.x, cam_pos.y, ix, iy);
                     if distance < min_distance {
                         min_distance = distance;
                     };
-                },
-                None => {},
+                }
+                None => {}
             }
         }
 
-        print!("min_distance: {}\n", min_distance);
+        if min_distance == FIELD_VIEW_LENGTH {
+            min_distance = previous_min_distance;
+        } else {
+            previous_min_distance = min_distance;
+        }
+
+        let ray_endpoint = calculations::calculate_other_endpoint(
+            cam_pos.x,
+            cam_pos.y,
+            min_distance,
+            ray_angle,
+        );
+        print_2d_line(
+            canvas,
+            cam_pos,
+            &Point2D { x: ray_endpoint.0, y: ray_endpoint.1 },
+        );
 
         let color_mul = 255 - (min_distance / FIELD_VIEW_LENGTH * 255.0) as u8;
         canvas.set_draw_color(Color::RGB(0, 0, 255 & color_mul));
 
-        let x = SCREEN_WIDTH as f64 - (i / (2.0 * (FIELD_VIEW_ANGLE) + 1.0)) * SCREEN_WIDTH as f64;
+        let x = SCREEN_WIDTH as f64 - ((angle+FIELD_VIEW_ANGLE) / (2.0 * (FIELD_VIEW_ANGLE) + 1.0)) * SCREEN_WIDTH as f64;
         let y = ((FIELD_VIEW_LENGTH - min_distance) / FIELD_VIEW_LENGTH) * MIN_DISTANCE_HEIGHT as f64;
 
         canvas
@@ -212,8 +230,19 @@ fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
             )
             .unwrap();
 
-        i += 1.0;
+        angle += SCANNING_STEP_ANGLE;
     }
+}
+
+fn _print_2d_point(canvas: &mut Canvas<Window>, p: &Point2D) {
+    canvas.set_draw_color(Color::RGB(255, 255, 255));
+
+    let x1 = ((SCREEN_WIDTH / 2) as f64 + p.x) as i32;
+    let y1 = ((SCREEN_HEIGHT / 2) as f64 - p.y) as i32;
+
+    canvas
+        .draw_rect(Rect::new(x1 - 1, y1 - 1, 3, 3))
+        .unwrap();
 }
 
 fn print_2d_line(canvas: &mut Canvas<Window>, p1: &Point2D, p2: &Point2D) {
@@ -233,10 +262,10 @@ fn print_2d_camera(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f
     canvas.set_draw_color(Color::RGB(255, 0, 0));
     canvas
         .draw_rect(Rect::new(
-            SCREEN_WIDTH / 2 + cam_pos.x as i32,
-            SCREEN_HEIGHT / 2 - cam_pos.y as i32,
-            POINT_WIDTH,
-            POINT_WIDTH,
+            SCREEN_WIDTH / 2 + cam_pos.x as i32 - 1,
+            SCREEN_HEIGHT / 2 - cam_pos.y as i32 - 1,
+            3,
+            3,
         ))
         .unwrap();
 
@@ -251,19 +280,6 @@ fn print_2d_camera(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f
             Point::new(
                 SCREEN_WIDTH / 2 + cam_pos_points.0.x as i32,
                 SCREEN_HEIGHT / 2 - cam_pos_points.0.y as i32,
-            ),
-        )
-        .unwrap();
-
-    canvas
-        .draw_line(
-            Point::new(
-                SCREEN_WIDTH / 2 + cam_pos_points.0.x as i32,
-                SCREEN_HEIGHT / 2 - cam_pos_points.0.y as i32,
-            ),
-            Point::new(
-                SCREEN_WIDTH / 2 + cam_pos_points.1.x as i32,
-                SCREEN_HEIGHT / 2 - cam_pos_points.1.y as i32,
             ),
         )
         .unwrap();
