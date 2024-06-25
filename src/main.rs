@@ -246,17 +246,6 @@ fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
     }
 }
 
-fn _print_2d_point(canvas: &mut Canvas<Window>, p: &Point2D) {
-    canvas.set_draw_color(Color::RGB(255, 255, 255));
-
-    let x1 = ((SCREEN_WIDTH / 2) as f64 + p.x) as i32;
-    let y1 = ((SCREEN_HEIGHT / 2) as f64 - p.y) as i32;
-
-    canvas
-        .draw_rect(Rect::new(x1 - 1, y1 - 1, 3, 3))
-        .unwrap();
-}
-
 fn print_2d_line(canvas: &mut Canvas<Window>, p1: &Point2D, p2: &Point2D) {
     canvas.set_draw_color(Color::RGB(0, 255, 0));
 
