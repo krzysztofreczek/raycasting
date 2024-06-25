@@ -72,7 +72,6 @@ const INITIAL_CAM_POS: Point2D = Point2D { x: -50.0, y: -50.0 };
 const INITIAL_CAM_ANGLE: f64 = 0.0;
 
 const CAM_SPEED: f64 = 10.0;
-const CAM_ROTATION_SPEED: f64 = 5.0;
 
 const SCANNING_STEP_ANGLE: f64 = 0.5;
 
@@ -109,53 +108,53 @@ pub fn main() -> Result<(), String> {
                     keycode: Some(Keycode::W),
                     ..
                 } => {
-                    let next_point = calculations::calculate_other_endpoint(
+                    let next_cam_pos = calculations::calculate_other_endpoint(
                         cam_pos.x,
                         cam_pos.y,
                         CAM_SPEED,
                         cam_angle,
                     );
-                    cam_pos.x = next_point.0;
-                    cam_pos.y = next_point.1;
+                    cam_pos.x = next_cam_pos.0;
+                    cam_pos.y = next_cam_pos.1;
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::S),
                     ..
                 } => {
-                    let next_point = calculations::calculate_other_endpoint(
+                    let next_cam_pos = calculations::calculate_other_endpoint(
                         cam_pos.x,
                         cam_pos.y,
                         CAM_SPEED,
                         cam_angle-180.0,
                     );
-                    cam_pos.x = next_point.0;
-                    cam_pos.y = next_point.1;
+                    cam_pos.x = next_cam_pos.0;
+                    cam_pos.y = next_cam_pos.1;
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::D),
                     ..
                 } => {
-                    let next_point = calculations::calculate_other_endpoint(
+                    let next_cam_pos = calculations::calculate_other_endpoint(
                         cam_pos.x,
                         cam_pos.y,
                         CAM_SPEED,
                         cam_angle-90.0,
                     );
-                    cam_pos.x = next_point.0;
-                    cam_pos.y = next_point.1;
+                    cam_pos.x = next_cam_pos.0;
+                    cam_pos.y = next_cam_pos.1;
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::A),
                     ..
                 } => {
-                    let next_point = calculations::calculate_other_endpoint(
+                    let next_cam_pos = calculations::calculate_other_endpoint(
                         cam_pos.x,
                         cam_pos.y,
                         CAM_SPEED,
                         cam_angle+90.0,
                     );
-                    cam_pos.x = next_point.0;
-                    cam_pos.y = next_point.1;
+                    cam_pos.x = next_cam_pos.0;
+                    cam_pos.y = next_cam_pos.1;
                 }
                 Event::MouseMotion { xrel, .. } => {
                     cam_angle -= xrel as f64 / 2.0;
