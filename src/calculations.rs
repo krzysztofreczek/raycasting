@@ -22,12 +22,36 @@ fn orientation(p: (f64, f64), q: (f64, f64), r: (f64, f64)) -> i32 {
     }
 }
 
-fn on_segment(p: (f64, f64), q: (f64, f64), r: (f64, f64)) -> bool {
+fn on_segment(ps: (f64, f64), qs: (f64, f64), rs: (f64, f64)) -> bool {
+    let mut p = ps;
+    p.0 = (p.0 * 100.0).round() / 100.0;
+    p.1 = (p.1 * 100.0).round() / 100.0;
+
+    let mut q = qs;
+    q.0 = (q.0 * 100.0).round() / 100.0;
+    q.1 = (q.1 * 100.0).round() / 100.0;
+
+    let mut r = rs;
+    r.0 = (r.0 * 100.0).round() / 100.0;
+    r.1 = (r.1 * 100.0).round() / 100.0;
+
     q.0 <= p.0.max(r.0) && q.0 >= p.0.min(r.0) &&
         q.1 <= p.1.max(r.1) && q.1 >= p.1.min(r.1)
 }
 
-fn segments_intersect(s1: ((f64, f64), (f64, f64)), s2: ((f64, f64), (f64, f64))) -> bool {
+fn segments_intersect(s1s: ((f64, f64), (f64, f64)), s2s: ((f64, f64), (f64, f64))) -> bool {
+    let mut s1 = s1s;
+    s1.0.0 = (s1s.0.0 * 100.0).round() / 100.0;
+    s1.0.1 = (s1s.0.1 * 100.0).round() / 100.0;
+    s1.1.0 = (s1s.1.0 * 100.0).round() / 100.0;
+    s1.1.1 = (s1s.1.1 * 100.0).round() / 100.0;
+
+    let mut s2 = s2s;
+    s2.0.0 = (s2s.0.0 * 100.0).round() / 100.0;
+    s2.0.1 = (s2s.0.1 * 100.0).round() / 100.0;
+    s2.1.0 = (s2s.1.0 * 100.0).round() / 100.0;
+    s2.1.1 = (s2s.1.1 * 100.0).round() / 100.0;
+
     let o1 = orientation(s1.0, s1.1, s2.0);
     let o2 = orientation(s1.0, s1.1, s2.1);
     let o3 = orientation(s2.0, s2.1, s1.0);

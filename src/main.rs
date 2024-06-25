@@ -15,59 +15,55 @@ const SCREEN_WIDTH: i32 = 1280;
 const SCREEN_HEIGHT: i32 = 720;
 
 const FIELD_VIEW_LENGTH: f64 = 300.0;
-const FIELD_VIEW_ANGLE: f64 = 40.0;
+const FIELD_VIEW_ANGLE: f64 = 30.0;
 
 struct Point2D {
     x: f64,
     y: f64,
 }
 
-const MAP_WALLS: [(Point2D, Point2D); 9] = [
-    (
-        Point2D {
-            x: -100.0,
-            y: -100.0,
-        },
-        Point2D {
-            x: -100.0,
-            y: 100.0,
-        },
-    ),
-    (
-        Point2D {
-            x: -100.0,
-            y: 100.0,
-        },
-        Point2D { x: -50.0, y: 100.0 },
-    ),
-    (
-        Point2D { x: -50.0, y: 100.0 },
-        Point2D { x: -50.0, y: 50.0 },
-    ),
-    (Point2D { x: -50.0, y: 50.0 }, Point2D { x: 0.0, y: 50.0 }),
-    (Point2D { x: 0.0, y: 50.0 }, Point2D { x: 0.0, y: 100.0 }),
+const MAP_WALLS: [(Point2D, Point2D); 34] = [
+    // Outer boundary
+    (Point2D { x: -400.0, y: -400.0 }, Point2D { x: -400.0, y: 400.0 }),
+    (Point2D { x: -400.0, y: 400.0 }, Point2D { x: 400.0, y: 400.0 }),
+    (Point2D { x: 400.0, y: 400.0 }, Point2D { x: 400.0, y: -400.0 }),
+    (Point2D { x: 400.0, y: -400.0 }, Point2D { x: -400.0, y: -400.0 }),
+
+    // Internal walls
+    (Point2D { x: -300.0, y: -300.0 }, Point2D { x: -300.0, y: 300.0 }),
+    (Point2D { x: -300.0, y: 300.0 }, Point2D { x: -200.0, y: 300.0 }),
+    (Point2D { x: -200.0, y: 300.0 }, Point2D { x: -200.0, y: 200.0 }),
+    (Point2D { x: -200.0, y: 200.0 }, Point2D { x: -100.0, y: 200.0 }),
+    (Point2D { x: -100.0, y: 200.0 }, Point2D { x: -100.0, y: 300.0 }),
+    (Point2D { x: -100.0, y: 300.0 }, Point2D { x: 100.0, y: 300.0 }),
+    (Point2D { x: 100.0, y: 300.0 }, Point2D { x: 100.0, y: 200.0 }),
+    (Point2D { x: 100.0, y: 200.0 }, Point2D { x: 200.0, y: 200.0 }),
+    (Point2D { x: 200.0, y: 200.0 }, Point2D { x: 200.0, y: 300.0 }),
+    (Point2D { x: 200.0, y: 300.0 }, Point2D { x: 300.0, y: 300.0 }),
+    (Point2D { x: 300.0, y: 300.0 }, Point2D { x: 300.0, y: -300.0 }),
+    (Point2D { x: 300.0, y: -300.0 }, Point2D { x: -300.0, y: -300.0 }),
+
+    // Additional complexity
+    (Point2D { x: -200.0, y: -200.0 }, Point2D { x: -200.0, y: 100.0 }),
+    (Point2D { x: -200.0, y: 100.0 }, Point2D { x: -100.0, y: 100.0 }),
+    (Point2D { x: -100.0, y: 100.0 }, Point2D { x: -100.0, y: 0.0 }),
+    (Point2D { x: -100.0, y: 0.0 }, Point2D { x: 0.0, y: 0.0 }),
+    (Point2D { x: 0.0, y: 0.0 }, Point2D { x: 0.0, y: 100.0 }),
     (Point2D { x: 0.0, y: 100.0 }, Point2D { x: 100.0, y: 100.0 }),
-    (
-        Point2D { x: 100.0, y: 100.0 },
-        Point2D { x: 150.0, y: 50.0 },
-    ),
-    (
-        Point2D { x: 150.0, y: 50.0 },
-        Point2D {
-            x: 150.0,
-            y: -100.0,
-        },
-    ),
-    (
-        Point2D {
-            x: 150.0,
-            y: -100.0,
-        },
-        Point2D {
-            x: -100.0,
-            y: -100.0,
-        },
-    ),
+    (Point2D { x: 100.0, y: 100.0 }, Point2D { x: 100.0, y: -100.0 }),
+    (Point2D { x: 100.0, y: -100.0 }, Point2D { x: 200.0, y: -100.0 }),
+    (Point2D { x: 200.0, y: -100.0 }, Point2D { x: 200.0, y: -200.0 }),
+    (Point2D { x: 200.0, y: -200.0 }, Point2D { x: -200.0, y: -200.0 }),
+
+    // More internal walls
+    (Point2D { x: 100.0, y: -200.0 }, Point2D { x: 100.0, y: -300.0 }),
+    (Point2D { x: 100.0, y: -300.0 }, Point2D { x: 0.0, y: -300.0 }),
+    (Point2D { x: 0.0, y: -300.0 }, Point2D { x: 0.0, y: -100.0 }),
+    (Point2D { x: 0.0, y: -100.0 }, Point2D { x: -100.0, y: -100.0 }),
+    (Point2D { x: -100.0, y: -100.0 }, Point2D { x: -100.0, y: -200.0 }),
+    (Point2D { x: -100.0, y: -200.0 }, Point2D { x: -200.0, y: -200.0 }),
+    (Point2D { x: -200.0, y: -200.0 }, Point2D { x: -200.0, y: -300.0 }),
+    (Point2D { x: -200.0, y: -300.0 }, Point2D { x: -300.0, y: -300.0 }),
 ];
 
 const INITIAL_CAM_POS: Point2D = Point2D { x: 0.0, y: 0.0 };
@@ -111,39 +107,41 @@ pub fn main() -> Result<(), String> {
                     keycode: Some(Keycode::Up),
                     ..
                 } => {
-                    cam_pos.y += CAM_SPEED;
+                    let next_point = calculations::calculate_other_endpoint(
+                        cam_pos.x,
+                        cam_pos.y,
+                        CAM_SPEED,
+                        cam_angle,
+                    );
+                    cam_pos.x = next_point.0;
+                    cam_pos.y = next_point.1;
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::Down),
                     ..
                 } => {
-                    cam_pos.y -= CAM_SPEED;
+                    let next_point = calculations::calculate_other_endpoint(
+                        cam_pos.x,
+                        cam_pos.y,
+                        CAM_SPEED,
+                        180.0 - cam_angle,
+                    );
+                    cam_pos.x = next_point.0;
+                    cam_pos.y = next_point.1;
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::Right),
                     ..
                 } => {
-                    cam_pos.x += CAM_SPEED;
+                    cam_angle -= CAM_ROTATION_SPEED;
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::Left),
                     ..
                 } => {
-                    cam_pos.x -= CAM_SPEED;
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::A),
-                    ..
-                } => {
                     cam_angle += CAM_ROTATION_SPEED;
                 }
-                Event::KeyDown {
-                    keycode: Some(Keycode::D),
-                    ..
-                } => {
-                    cam_angle -= CAM_ROTATION_SPEED;
-                }
-                _ => {}
+                _ => (),
             }
         }
 
@@ -170,7 +168,6 @@ const MIN_DISTANCE_HEIGHT: i32 = 300;
 
 fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
     let mut angle = -FIELD_VIEW_ANGLE;
-    let mut previous_min_distance = FIELD_VIEW_LENGTH;
 
     while angle < FIELD_VIEW_ANGLE {
         let ray_angle = cam_angle + angle;
@@ -184,8 +181,8 @@ fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
         let mut min_distance = FIELD_VIEW_LENGTH;
         for w in MAP_WALLS {
             let intersection = calculations::find_intersection(
-                ((w.0.x, w.0.y,), (w.1.x, w.1.y,)),
-                ((cam_pos.x, cam_pos.y,), (ray_endpoint.0, ray_endpoint.1,)),
+                ((w.0.x, w.0.y), (w.1.x, w.1.y)),
+                ((cam_pos.x, cam_pos.y), (ray_endpoint.0, ray_endpoint.1)),
             );
 
             match intersection {
@@ -197,12 +194,6 @@ fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
                 }
                 None => {}
             }
-        }
-
-        if min_distance == FIELD_VIEW_LENGTH {
-            min_distance = previous_min_distance;
-        } else {
-            previous_min_distance = min_distance;
         }
 
         let ray_endpoint = calculations::calculate_other_endpoint(
@@ -220,7 +211,7 @@ fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
         let color_mul = 255 - (min_distance / FIELD_VIEW_LENGTH * 255.0) as u8;
         canvas.set_draw_color(Color::RGB(0, 0, 255 & color_mul));
 
-        let x = SCREEN_WIDTH as f64 - ((angle+FIELD_VIEW_ANGLE) / (2.0 * (FIELD_VIEW_ANGLE) + 1.0)) * SCREEN_WIDTH as f64;
+        let x = SCREEN_WIDTH as f64 - ((angle + FIELD_VIEW_ANGLE) / (2.0 * (FIELD_VIEW_ANGLE) + 1.0)) * SCREEN_WIDTH as f64;
         let y = ((FIELD_VIEW_LENGTH - min_distance) / FIELD_VIEW_LENGTH) * MIN_DISTANCE_HEIGHT as f64;
 
         canvas
