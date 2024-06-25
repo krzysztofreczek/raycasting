@@ -17,6 +17,8 @@ const SCREEN_HEIGHT: i32 = 720;
 const FIELD_VIEW_LENGTH: f64 = 300.0;
 const FIELD_VIEW_ANGLE: f64 = 30.0;
 
+const DISPLAY_2D_MAP: bool = true;
+
 struct Point2D {
     x: f64,
     y: f64,
@@ -66,10 +68,10 @@ const MAP_WALLS: [(Point2D, Point2D); 34] = [
     (Point2D { x: -200.0, y: -300.0 }, Point2D { x: -300.0, y: -300.0 }),
 ];
 
-const INITIAL_CAM_POS: Point2D = Point2D { x: 0.0, y: 0.0 };
+const INITIAL_CAM_POS: Point2D = Point2D { x: -50.0, y: -50.0 };
 const INITIAL_CAM_ANGLE: f64 = 0.0;
 
-const CAM_SPEED: f64 = 5.0;
+const CAM_SPEED: f64 = 10.0;
 const CAM_ROTATION_SPEED: f64 = 5.0;
 
 const SCANNING_STEP_ANGLE: f64 = 0.5;
@@ -104,7 +106,7 @@ pub fn main() -> Result<(), String> {
                     ..
                 } => break 'running,
                 Event::KeyDown {
-                    keycode: Some(Keycode::Up),
+                    keycode: Some(Keycode::W),
                     ..
                 } => {
                     let next_point = calculations::calculate_other_endpoint(
@@ -117,30 +119,47 @@ pub fn main() -> Result<(), String> {
                     cam_pos.y = next_point.1;
                 }
                 Event::KeyDown {
-                    keycode: Some(Keycode::Down),
+                    keycode: Some(Keycode::S),
                     ..
                 } => {
                     let next_point = calculations::calculate_other_endpoint(
                         cam_pos.x,
                         cam_pos.y,
                         CAM_SPEED,
-                        180.0 - cam_angle,
+                        cam_angle-180.0,
                     );
                     cam_pos.x = next_point.0;
                     cam_pos.y = next_point.1;
                 }
                 Event::KeyDown {
-                    keycode: Some(Keycode::Right),
+                    keycode: Some(Keycode::D),
                     ..
                 } => {
-                    cam_angle -= CAM_ROTATION_SPEED;
+                    let next_point = calculations::calculate_other_endpoint(
+                        cam_pos.x,
+                        cam_pos.y,
+                        CAM_SPEED,
+                        cam_angle-90.0,
+                    );
+                    cam_pos.x = next_point.0;
+                    cam_pos.y = next_point.1;
                 }
                 Event::KeyDown {
-                    keycode: Some(Keycode::Left),
+                    keycode: Some(Keycode::A),
                     ..
                 } => {
-                    cam_angle += CAM_ROTATION_SPEED;
+                    let next_point = calculations::calculate_other_endpoint(
+                        cam_pos.x,
+                        cam_pos.y,
+                        CAM_SPEED,
+                        cam_angle+90.0,
+                    );
+                    cam_pos.x = next_point.0;
+                    cam_pos.y = next_point.1;
                 }
+                Event::MouseMotion { xrel, .. } => {
+                    cam_angle -= xrel as f64 / 2.0;
+                },
                 _ => (),
             }
         }
@@ -148,13 +167,14 @@ pub fn main() -> Result<(), String> {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
 
-        print_2d_camera(&mut canvas, &cam_pos, &cam_angle);
+        if DISPLAY_2D_MAP {
+            print_2d_camera(&mut canvas, &cam_pos, &cam_angle);
+            for w in MAP_WALLS {
+                print_2d_line(&mut canvas, &w.0, &w.1);
+            }
+        }
 
         scan(&mut canvas, &cam_pos, &cam_angle);
-
-        for w in MAP_WALLS {
-            print_2d_line(&mut canvas, &w.0, &w.1);
-        }
 
         canvas.present();
 
@@ -196,17 +216,19 @@ fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
             }
         }
 
-        let ray_endpoint = calculations::calculate_other_endpoint(
-            cam_pos.x,
-            cam_pos.y,
-            min_distance,
-            ray_angle,
-        );
-        print_2d_line(
-            canvas,
-            cam_pos,
-            &Point2D { x: ray_endpoint.0, y: ray_endpoint.1 },
-        );
+        if DISPLAY_2D_MAP {
+            let ray_endpoint = calculations::calculate_other_endpoint(
+                cam_pos.x,
+                cam_pos.y,
+                min_distance,
+                ray_angle,
+            );
+            print_2d_line(
+                canvas,
+                cam_pos,
+                &Point2D { x: ray_endpoint.0, y: ray_endpoint.1 },
+            );
+        }
 
         let color_mul = 255 - (min_distance / FIELD_VIEW_LENGTH * 255.0) as u8;
         canvas.set_draw_color(Color::RGB(0, 0, 255 & color_mul));
