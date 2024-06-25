@@ -77,9 +77,6 @@ const CAM_ROTATION_SPEED: f64 = 5.0;
 const SCANNING_STEP_ANGLE: f64 = 0.5;
 
 pub fn main() -> Result<(), String> {
-    let mut cam_pos = INITIAL_CAM_POS;
-    let mut cam_angle = INITIAL_CAM_ANGLE;
-
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
 
@@ -95,6 +92,9 @@ pub fn main() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+    
+    let mut cam_pos = INITIAL_CAM_POS;
+    let mut cam_angle = INITIAL_CAM_ANGLE;
 
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
