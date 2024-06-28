@@ -10,7 +10,6 @@ use sdl2::video::Window;
 use std::time::Duration;
 
 mod calculations;
-mod map;
 
 const SCREEN_WIDTH: i32 = 1280;
 const SCREEN_HEIGHT: i32 = 720;
