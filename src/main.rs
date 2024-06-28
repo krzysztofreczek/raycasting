@@ -5,11 +5,12 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Point;
 use sdl2::rect::Rect;
-use sdl2::render::Canvas;
+use sdl2::render::{Canvas, WindowCanvas};
 use sdl2::video::Window;
 use std::time::Duration;
 
 mod calculations;
+mod map;
 
 const SCREEN_WIDTH: i32 = 1280;
 const SCREEN_HEIGHT: i32 = 720;
@@ -73,8 +74,6 @@ const INITIAL_CAM_ANGLE: f64 = 0.0;
 
 const CAM_SPEED: f64 = 10.0;
 
-const SCANNING_STEP_ANGLE: f64 = 0.5;
-
 pub fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -90,7 +89,9 @@ pub fn main() -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+    let mut canvas = window.into_canvas()
+        .build()
+        .map_err(|e| e.to_string())?;
     
     let mut cam_pos = INITIAL_CAM_POS;
     let mut cam_angle = INITIAL_CAM_ANGLE;
@@ -108,56 +109,28 @@ pub fn main() -> Result<(), String> {
                     keycode: Some(Keycode::W),
                     ..
                 } => {
-                    let next_cam_pos = calculations::calculate_other_endpoint(
-                        cam_pos.x,
-                        cam_pos.y,
-                        CAM_SPEED,
-                        cam_angle,
-                    );
-                    cam_pos.x = next_cam_pos.0;
-                    cam_pos.y = next_cam_pos.1;
+                    move_cam_up(&mut cam_pos, cam_angle);
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::S),
                     ..
                 } => {
-                    let next_cam_pos = calculations::calculate_other_endpoint(
-                        cam_pos.x,
-                        cam_pos.y,
-                        CAM_SPEED,
-                        cam_angle-180.0,
-                    );
-                    cam_pos.x = next_cam_pos.0;
-                    cam_pos.y = next_cam_pos.1;
+                    move_cam_down(&mut cam_pos, cam_angle);
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::D),
                     ..
                 } => {
-                    let next_cam_pos = calculations::calculate_other_endpoint(
-                        cam_pos.x,
-                        cam_pos.y,
-                        CAM_SPEED,
-                        cam_angle-90.0,
-                    );
-                    cam_pos.x = next_cam_pos.0;
-                    cam_pos.y = next_cam_pos.1;
+                    move_cam_right(&mut cam_pos, cam_angle);
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::A),
                     ..
                 } => {
-                    let next_cam_pos = calculations::calculate_other_endpoint(
-                        cam_pos.x,
-                        cam_pos.y,
-                        CAM_SPEED,
-                        cam_angle+90.0,
-                    );
-                    cam_pos.x = next_cam_pos.0;
-                    cam_pos.y = next_cam_pos.1;
+                    move_cam_left(&mut cam_pos, cam_angle);
                 }
                 Event::MouseMotion { xrel, .. } => {
-                    cam_angle -= xrel as f64 / 2.0;
+                    rotate_cam(&mut cam_angle, xrel);
                 },
                 _ => (),
             }
@@ -168,22 +141,68 @@ pub fn main() -> Result<(), String> {
 
         if DISPLAY_2D_MAP {
             print_2d_camera(&mut canvas, &cam_pos, &cam_angle);
-            for w in MAP_WALLS {
-                print_2d_line(&mut canvas, &w.0, &w.1);
-            }
+            print_2d_walls(&mut canvas);
         }
 
         scan(&mut canvas, &cam_pos, &cam_angle);
 
         canvas.present();
-
+        
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
     }
 
     Ok(())
 }
 
-const MIN_DISTANCE_HEIGHT: i32 = 300;
+fn move_cam_up(cam_pos: &mut Point2D, cam_angle: f64) {
+    let next_cam_pos = calculations::calculate_other_endpoint(
+        cam_pos.x,
+        cam_pos.y,
+        CAM_SPEED,
+        cam_angle,
+    );
+    cam_pos.x = next_cam_pos.0;
+    cam_pos.y = next_cam_pos.1;
+}
+
+fn move_cam_down(cam_pos: &mut Point2D, cam_angle: f64) {
+    let next_cam_pos = calculations::calculate_other_endpoint(
+        cam_pos.x,
+        cam_pos.y,
+        CAM_SPEED,
+        cam_angle - 180.0,
+    );
+    cam_pos.x = next_cam_pos.0;
+    cam_pos.y = next_cam_pos.1;
+}
+
+fn move_cam_left(cam_pos: &mut Point2D, cam_angle: f64) {
+    let next_cam_pos = calculations::calculate_other_endpoint(
+        cam_pos.x,
+        cam_pos.y,
+        CAM_SPEED,
+        cam_angle + 90.0,
+    );
+    cam_pos.x = next_cam_pos.0;
+    cam_pos.y = next_cam_pos.1;
+}
+
+fn move_cam_right(cam_pos: &mut Point2D, cam_angle: f64) {
+    let next_cam_pos = calculations::calculate_other_endpoint(
+        cam_pos.x,
+        cam_pos.y,
+        CAM_SPEED,
+        cam_angle - 90.0,
+    );
+    cam_pos.x = next_cam_pos.0;
+    cam_pos.y = next_cam_pos.1;
+}
+
+fn rotate_cam(cam_angle: &mut f64, xrel: i32) {
+    *cam_angle -= xrel as f64 / 2.0;
+}
+
+const SCANNING_STEP_ANGLE: f64 = 0.5;
 
 fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
     let mut angle = -FIELD_VIEW_ANGLE;
@@ -229,18 +248,7 @@ fn scan(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f64) {
             );
         }
 
-        let color_mul = 255 - (min_distance / FIELD_VIEW_LENGTH * 255.0) as u8;
-        canvas.set_draw_color(Color::RGB(0, 0, 255 & color_mul));
-
-        let x = SCREEN_WIDTH as f64 - ((angle + FIELD_VIEW_ANGLE) / (2.0 * (FIELD_VIEW_ANGLE) + 1.0)) * SCREEN_WIDTH as f64;
-        let y = ((FIELD_VIEW_LENGTH - min_distance) / FIELD_VIEW_LENGTH) * MIN_DISTANCE_HEIGHT as f64;
-
-        canvas
-            .draw_line(
-                Point::new(x as i32, SCREEN_HEIGHT / 2 - y as i32),
-                Point::new(x as i32, SCREEN_HEIGHT / 2 + y as i32),
-            )
-            .unwrap();
+        draw_3d_wall(canvas, &angle, &min_distance);
 
         angle += SCANNING_STEP_ANGLE;
     }
@@ -270,7 +278,7 @@ fn print_2d_camera(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f
         ))
         .unwrap();
 
-    let cam_pos_points = cam_pos_view_points(&cam_pos, &cam_angle);
+    let cam_pos_points = resolve_cam_pos_view_points(&cam_pos, &cam_angle);
 
     canvas
         .draw_line(
@@ -299,7 +307,30 @@ fn print_2d_camera(canvas: &mut Canvas<Window>, cam_pos: &Point2D, cam_angle: &f
         .unwrap();
 }
 
-fn cam_pos_view_points(cam_pos: &Point2D, cam_angle: &f64) -> (Point2D, Point2D) {
+fn print_2d_walls(mut canvas: &mut WindowCanvas) {
+    for w in MAP_WALLS {
+        print_2d_line(&mut canvas, &w.0, &w.1);
+    }
+}
+
+const MAX_WALL_HEIGHT: i32 = 300;
+
+fn draw_3d_wall(canvas: &mut Canvas<Window>, angle: &f64, min_distance: &f64) {
+    let color_mul = 255 - (min_distance / FIELD_VIEW_LENGTH * 255.0) as u8;
+    canvas.set_draw_color(Color::RGB(255 & color_mul, 255 & color_mul, 255 & color_mul));
+
+    let x = SCREEN_WIDTH as f64 - ((angle + FIELD_VIEW_ANGLE) / (2.0 * (FIELD_VIEW_ANGLE) + 1.0)) * SCREEN_WIDTH as f64;
+    let y = ((FIELD_VIEW_LENGTH - min_distance) / FIELD_VIEW_LENGTH) * MAX_WALL_HEIGHT as f64;
+
+    canvas
+        .draw_line(
+            Point::new(x as i32, SCREEN_HEIGHT / 2 - y as i32),
+            Point::new(x as i32, SCREEN_HEIGHT / 2 + y as i32),
+        )
+        .unwrap();
+}
+
+fn resolve_cam_pos_view_points(cam_pos: &Point2D, cam_angle: &f64) -> (Point2D, Point2D) {
     let (x1, y1) = calculations::calculate_other_endpoint(
         cam_pos.x,
         cam_pos.y,
